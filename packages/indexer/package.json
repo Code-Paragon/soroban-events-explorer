@@ -1,0 +1,14 @@
+{
+  "name": "@soroban-forge/indexer",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch & node dist/index.js",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  }
+}

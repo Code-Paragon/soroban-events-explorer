@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  indexer:
+    build: 
+      context: ./packages/indexer
+    container_name: soroban_indexer
+    restart: unless-stopped
+    environment:
+      - STELLAR_NETWORK=testnet
+      - RPC_URL=https://soroban-testnet.stellar.org
+
+  api:
+    build: 
+      context: ./packages/api
+    container_name: soroban_api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    depends_on:
+      - indexer
+
+  ui:
+    build: 
+      context: ./packages/ui
+    container_name: soroban_ui
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
