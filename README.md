@@ -35,6 +35,8 @@ The easiest way to run the entire stack locally is using Docker Compose.
     ```
 3. Open your browser to http://localhost:3000 to view the UI. The API runs on http://localhost:3001.
 
+The indexer reads `RPC_URL` for the Stellar RPC endpoint and defaults to the public testnet RPC (`https://soroban-testnet.stellar.org`) when it is not set.
+
 ## Contributing
 We want to build the best DX tooling in the Stellar ecosystem, and we need your help! See our CONTRIBUTING.md for a list of "Good First Issues."
 
