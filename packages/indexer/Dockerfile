@@ -1,16 +1,19 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 WORKDIR /app
-# We use a simple build for the V1 scaffold, assuming the workspace is built locally first,
-# or we build it inside the container. For simplicity in this scaffold:
+
+# Copy the root workspace configuration
 COPY package*.json ./
+
+# Copy the shared database package and the indexer package
+COPY packages/db ./packages/db
+COPY packages/indexer ./packages/indexer
+
+# Install all dependencies (npm will automatically link the local workspaces)
 RUN npm install
-COPY . .
-RUN npm run build
 
-FROM node:20-alpine AS runner
-WORKDIR /app
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+# Generate the Prisma Client and build the package
+RUN npm run db:generate --workspace=packages/db
+RUN npm run build --workspace=packages/indexer
 
-CMD ["npm", "start"]
+# Start the indexer
+CMD ["npm", "run", "start", "--workspace=packages/indexer"]

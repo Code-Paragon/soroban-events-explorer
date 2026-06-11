@@ -1,27 +1,57 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: soroban_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_DB=soroban_explorer
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d soroban_explorer" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   indexer:
-    build: 
-      context: ./packages/indexer
+    build:
+      context: .
+      dockerfile: ./packages/indexer/Dockerfile
     container_name: soroban_indexer
     restart: unless-stopped
     environment:
       - STELLAR_NETWORK=testnet
       - RPC_URL=https://soroban-testnet.stellar.org
+      - DATABASE_URL=postgresql://postgres:postgres_password@postgres:5432/soroban_explorer?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   api:
-    build: 
-      context: ./packages/api
+    build:
+      context: .
+      dockerfile: ./packages/api/Dockerfile
     container_name: soroban_api
     restart: unless-stopped
     ports:
       - "3001:3001"
+    environment:
+      - STELLAR_NETWORK=testnet
+      - DATABASE_URL=postgresql://postgres:postgres_password@postgres:5432/soroban_explorer?schema=public
     depends_on:
-      - indexer
+      postgres:
+        condition: service_healthy
+      indexer:
+        condition: service_started
 
   ui:
-    build: 
+    build:
       context: ./packages/ui
     container_name: soroban_ui
     restart: unless-stopped
@@ -29,3 +59,6 @@ services:
       - "3000:80"
     depends_on:
       - api
+
+volumes:
+  pgdata:
