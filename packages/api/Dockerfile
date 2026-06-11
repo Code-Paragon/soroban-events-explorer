@@ -1,15 +1,19 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 WORKDIR /app
+
+# Copy the root workspace configuration
 COPY package*.json ./
+
+# Copy the shared database package and the API package
+COPY packages/db ./packages/db
+COPY packages/api ./packages/api
+
+# Install all dependencies
 RUN npm install
-COPY . .
-RUN npm run build
 
-FROM node:20-alpine AS runner
-WORKDIR /app
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+# Generate the Prisma Client and build the package
+RUN npm run db:generate --workspace=packages/db
+RUN npm run build --workspace=packages/api
 
-EXPOSE 3001
-CMD ["npm", "start"]
+# Start the API
+CMD ["npm", "run", "start", "--workspace=packages/api"]

@@ -1,0 +1,27 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model SorobanEvent {
+  id             String   @id // Composite or unique ID from network
+  ledgerSequence Int
+  contractId     String
+  topic          String
+  payloadXdr     String   @db.Text
+  timestamp      DateTime @default(now())
+
+  @@index([contractId])
+  @@index([topic])
+  @@index([ledgerSequence])
+}
+
+model IndexerState {
+  id                String   @id @default("main_indexer")
+  lastScannedLedger Int
+  updatedAt         DateTime @updatedAt
+}
