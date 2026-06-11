@@ -7,8 +7,6 @@
 ## The Vision
 Developer Experience (DX) is the cornerstone of any thriving blockchain ecosystem. Currently, reading historical smart contract state and filtering events on Soroban requires heavy RPC queries. The **Soroban Events Explorer** provides developers with a plug-and-play local indexer. Spin it up, point it at your local or testnet network, and instantly view a real-time feed of your smart contract events.
 
-This project is in its "V1 Minimum Viable Scaffold" stage, designed for open-source contributions via the Drips funding program.
-
 ## Architecture (Monorepo)
 Managed via [Turborepo](https://turbo.build/repo/docs) and fully orchestrated with Docker Compose for immediate local hosting.
 
