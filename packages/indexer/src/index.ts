@@ -9,7 +9,6 @@ const EVENT_PAGE_LIMIT = 100;
 console.log(`[Indexer] Starting Soroban Event Indexer on ${STELLAR_NETWORK}...`);
 console.log(`[Indexer] Connecting to Stellar RPC at ${RPC_URL}`);
 
-const server = new rpc.Server(RPC_URL);
 let lastScannedLedger: number | undefined;
 let isPolling = false;
 
@@ -34,6 +33,7 @@ async function pollLedger() {
     isPolling = true;
 
     try {
+        const server = new rpc.Server(RPC_URL);
         if (lastScannedLedger === undefined) {
             const indexerState = await prisma.indexerState.findUnique({
                 where: { id: 'main_indexer' },
