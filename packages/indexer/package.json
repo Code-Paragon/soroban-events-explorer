@@ -4,7 +4,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch & node dist/index.js",
-    "start": "node dist/index.js",
+    "start": "npx prisma db push --schema=../db/prisma/schema.prisma && node dist/index.js",
     "clean": "rm -rf dist"
   },
   "devDependencies": {

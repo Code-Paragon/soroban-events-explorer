@@ -1,4 +1,5 @@
 import { rpc } from '@stellar/stellar-sdk';
+import { prisma } from '@soroban-forge/db';
 
 const STELLAR_NETWORK = process.env.STELLAR_NETWORK || 'testnet';
 const RPC_URL = process.env.RPC_URL || 'https://soroban-testnet.stellar.org';
@@ -10,6 +11,7 @@ console.log(`[Indexer] Connecting to Stellar RPC at ${RPC_URL}`);
 
 const server = new rpc.Server(RPC_URL);
 let lastScannedLedger: number | undefined;
+let isPolling = false;
 
 function eventToLogPayload(event: rpc.Api.EventResponse) {
     return {
@@ -25,7 +27,23 @@ function eventToLogPayload(event: rpc.Api.EventResponse) {
 }
 
 async function pollLedger() {
+    if (isPolling) {
+        console.log('[Indexer] Previous poll is still in progress. Skipping execution...');
+        return;
+    }
+    isPolling = true;
+
     try {
+        if (lastScannedLedger === undefined) {
+            const indexerState = await prisma.indexerState.findUnique({
+                where: { id: 'main_indexer' },
+            });
+            if (indexerState) {
+                lastScannedLedger = indexerState.lastScannedLedger;
+                console.log(`[Indexer] Resumed from database lastScannedLedger: ${lastScannedLedger}`);
+            }
+        }
+
         const latestLedger = await server.getLatestLedger();
         const startLedger = lastScannedLedger === undefined
             ? latestLedger.sequence
@@ -44,16 +62,39 @@ async function pollLedger() {
         });
 
         for (const event of events.events) {
-            console.log('[Indexer] Soroban event', eventToLogPayload(event));
+            const payload = eventToLogPayload(event);
+            console.log('[Indexer] Soroban event', payload);
+
+            // Persist the event to PostgreSQL via Prisma
+            await prisma.event.upsert({
+                where: { id: payload.id },
+                update: {},
+                create: {
+                    id: payload.id,
+                    contractId: payload.contractId || '',
+                    topic: payload.topic.join(','),
+                    data: payload.value,
+                    timestamp: payload.ledgerClosedAt ? new Date(payload.ledgerClosedAt) : new Date(),
+                },
+            });
         }
 
         lastScannedLedger = latestLedger.sequence;
+        await prisma.indexerState.upsert({
+            where: { id: 'main_indexer' },
+            update: { lastScannedLedger: latestLedger.sequence },
+            create: { id: 'main_indexer', lastScannedLedger: latestLedger.sequence },
+        });
+
         console.log(`[Indexer] Scanned ledgers ${startLedger}-${latestLedger.sequence}. Found ${events.events.length} Soroban events.`);
     } catch (error) {
         console.error('[Indexer] Failed to poll Stellar RPC', error);
+    } finally {
+        isPolling = false;
     }
 }
 
 // Start the polling loop
 setInterval(pollLedger, POLLING_INTERVAL_MS);
 void pollLedger();
+

@@ -1,27 +1,72 @@
 import Fastify from 'fastify';
+import { prisma } from '@soroban-forge/db';
 
 const fastify = Fastify({ logger: true });
 
-// V1 Scaffold: Mock Events Feed
+// Handle CORS for frontend clients
+fastify.addHook('onRequest', async (request, reply) => {
+    reply.header('Access-Control-Allow-Origin', '*');
+    reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (request.method === 'OPTIONS') {
+        return reply.status(204).send();
+    }
+});
+
+// V1 Scaffold: Dynamic Events Feed from DB
 fastify.get('/events', async (request, reply) => {
-    // MOCK EXECUTION:
-    // In a real deployment, this route would query the shared database
-    // populated by the Indexer service.
+    const query = request.query as { limit?: string; offset?: string; contractId?: string };
+    
+    // Parse pagination parameters
+    let limit = parseInt(query.limit || '10', 10);
+    let offset = parseInt(query.offset || '0', 10);
+    
+    if (isNaN(limit) || limit < 1) {
+        limit = 10;
+    }
+    if (isNaN(offset) || offset < 0) {
+        offset = 0;
+    }
+    
+    // Safety cap on page size
+    if (limit > 100) {
+        limit = 100;
+    }
 
-    // GOOD FIRST ISSUE TODO:
-    // 1. Set up a database connection (e.g., PostgreSQL/Prisma).
-    // 2. Query the database for the latest events.
-    // 3. Implement query parameters for pagination (?limit=10&cursor=xxx).
-    // 4. Implement filtering by contract ID.
+    const where: any = {};
+    if (query.contractId) {
+        where.contractId = query.contractId;
+    }
 
-    return {
-        status: "success",
-        network: process.env.STELLAR_NETWORK || 'testnet',
-        events: [
-            { id: "event_1", contractId: "CC7...F3A", topic: "transfer", amount: "100 XLM", timestamp: Date.now() },
-            { id: "event_2", contractId: "CDA...9BB", topic: "mint", amount: "5000 USDC", timestamp: Date.now() - 5000 }
-        ]
-    };
+    try {
+        const events = await prisma.event.findMany({
+            where,
+            take: limit,
+            skip: offset,
+            orderBy: {
+                timestamp: 'desc',
+            },
+        });
+
+        const total = await prisma.event.count({ where });
+
+        return {
+            status: "success",
+            network: process.env.STELLAR_NETWORK || 'testnet',
+            pagination: {
+                limit,
+                offset,
+                total,
+            },
+            events,
+        };
+    } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+            status: "error",
+            message: "Failed to retrieve events from database",
+        });
+    }
 });
 
 const start = async () => {
