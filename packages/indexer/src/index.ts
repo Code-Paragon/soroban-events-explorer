@@ -8,7 +8,6 @@ const EVENT_PAGE_LIMIT = 100;
 console.log(`[Indexer] Starting Soroban Event Indexer on ${STELLAR_NETWORK}...`);
 console.log(`[Indexer] Connecting to Stellar RPC at ${RPC_URL}`);
 
-const server = new rpc.Server(RPC_URL);
 let lastScannedLedger: number | undefined;
 
 function eventToLogPayload(event: rpc.Api.EventResponse) {
@@ -26,6 +25,7 @@ function eventToLogPayload(event: rpc.Api.EventResponse) {
 
 async function pollLedger() {
     try {
+        const server = new rpc.Server(RPC_URL);
         const latestLedger = await server.getLatestLedger();
         const startLedger = lastScannedLedger === undefined
             ? latestLedger.sequence
