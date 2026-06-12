@@ -11,6 +11,7 @@ console.log(`[Indexer] Connecting to Stellar RPC at ${RPC_URL}`);
 
 const server = new rpc.Server(RPC_URL);
 let lastScannedLedger: number | undefined;
+let isPolling = false;
 
 function eventToLogPayload(event: rpc.Api.EventResponse) {
     return {
@@ -26,6 +27,12 @@ function eventToLogPayload(event: rpc.Api.EventResponse) {
 }
 
 async function pollLedger() {
+    if (isPolling) {
+        console.log('[Indexer] Previous poll is still in progress. Skipping execution...');
+        return;
+    }
+    isPolling = true;
+
     try {
         if (lastScannedLedger === undefined) {
             const indexerState = await prisma.indexerState.findUnique({
@@ -82,6 +89,8 @@ async function pollLedger() {
         console.log(`[Indexer] Scanned ledgers ${startLedger}-${latestLedger.sequence}. Found ${events.events.length} Soroban events.`);
     } catch (error) {
         console.error('[Indexer] Failed to poll Stellar RPC', error);
+    } finally {
+        isPolling = false;
     }
 }
 
